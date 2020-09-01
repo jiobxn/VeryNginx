@@ -86,7 +86,7 @@ function _M.filter()
 				if http_x_forwarded_for == nil then
 					http_x_forwarded_for = "-"
 				end
-				log:info(remote_addr .. ' - ' .. remote_user .. ' ['.. time_local ..'] "' .. request .. '" ' .. status .. ' ' .. body_bytes_sent .. ' "' .. http_referer .. '" "' .. http_user_agent .. '" "' .. http_x_forwarded_for .. '" "' .. key ..'" ' .. count_now)
+				log:info(remote_addr .. ' - ' .. remote_user .. ' ['.. time_local ..'] "' .. request .. '" ' .. rule['code'] .. ' ' .. body_bytes_sent .. ' "' .. http_referer .. '" "' .. http_user_agent .. '" "' .. http_x_forwarded_for .. '" "' .. key ..'" ' .. count_now)
                 if rule['response'] ~= nil then
                     ngx.status = tonumber( rule['code'] )
                     response = response_list[rule['response']]
