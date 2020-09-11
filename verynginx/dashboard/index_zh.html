@@ -243,6 +243,7 @@
                                 <div class="leftnav leftnav_2" config_name="action_browser_verify" onclick="dashboard.switch_to_config(this)">浏览器校验</div>
                                 <div class="leftnav leftnav_2" config_name="action_frequency_limit" onclick="dashboard.switch_to_config(this)">频率限制</div>
                                 <div class="leftnav leftnav_2" config_name="action_filter" onclick="dashboard.switch_to_config(this)">拦截规则</div>
+                                <div class="leftnav leftnav_2" config_name="action_black_write_list" onclick="dashboard.switch_to_config(this)">黑白名单</div>
                             </div>
                             
                             <div class="leftnav leftnav_1" group="backend" onclick="dashboard.switch_config_nav_group(this)">后端</div>
@@ -1290,6 +1291,205 @@
                             </form>
                         </div>
 
+                        <div class="config_container" id="config_action_black_write_list">
+                            <div class="config_title">
+                                黑白名单
+                            </div>
+                            <input type="checkbox" v-model="config_now.black_white_list_enable">
+                            <label>开启</label>
+                            <table class="table table-bordered config_table">
+                                <thead>
+                                <tr>
+                                    <td>#</td>
+                                    <td>开启</td>
+                                    <td>Ip地址</td>
+<!--                                    <td>类型</td>-->
+                                    <td>匹配规则</td>
+                                    <td>执行动作</td>
+                                    <td>返回HTTP状态码</td>
+                                    <td>响应规则</td>
+                                    <td></td>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <template v-for="rule in config_now.black_white_list">
+                                    <tr v-bind:class="[ config_now.black_white_list._editing == $index ? 'editing' : '']">
+                                        <td>{{ $index }}</td>
+                                        <td>
+                                            <template v-if="(rule.enable)">
+                                                ✓
+                                            </template>
+                                            <template v-else>
+                                                ✗
+                                            </template>
+                                        </td>
+                                        <td>
+                                            {{rule.ip}}
+                                        </td>
+<!--                                        <td>-->
+<!--                                            <template v-if="(rule.model=='black')">-->
+<!--                                                黑名单-->
+<!--                                            </template>-->
+<!--                                            <template v-else>-->
+<!--                                                白名单-->
+<!--                                            </template>-->
+<!--                                        </td>-->
+                                        <td>{{ rule.matcher }}</td>
+                                        <td>{{ rule.action }}</td>
+                                        <td>
+                                            <template v-if="(rule.action == 'block')">
+                                                {{ rule.code }}
+                                            </template>
+                                        </td>
+                                        <td>
+                                            <template v-if="(rule.action == 'block')">
+                                                {{ rule.response }}
+                                            </template>
+                                        </td>
+                                        <td class="no_break">
+                                            <template v-if="(config_now.black_white_list._editing == undefined )">
+                                                <button type="button" class="btn btn-default btn-xs btn_up" onclick="config.config_move_up('black_white_list',{{$index}})">
+                                                    上移
+                                                </button>
+                                                <button type="button" class="btn btn-default btn-xs btn_down" onclick="config.config_move_down('black_white_list',{{$index}})">
+                                                    下移
+                                                </button>
+                                                <button type="button" class="btn btn-default btn-xs btn_del" onclick="config.config_mod('black_white_list',{{$index}},null)">
+                                                    删除
+                                                </button>
+                                                <button type="button" class="btn btn-default btn-xs btn_edit" onclick="config.config_edit_begin('black_white_list',{{$index}},'config_black_write_list_form')">
+                                                    编辑
+                                                </button>
+                                            </template>
+                                            <template v-if="(config_now.black_white_list._editing == $index )">
+                                                正在编辑...
+                                            </template>
+                                        </td>
+                                    </tr>
+                                </template>
+                                </tbody>
+                            </table>
+
+                            <div class="config_sub_title">
+                                添加黑白名单
+                            </div>
+                            <hr>
+                            <form class="form-horizontal config_form" id="config_black_write_list_form"
+                                  onsubmit="config.config_edit_save( 'black_white_list', 'config_black_write_list_form'); return false;" >
+
+                                <div class="form-group">
+                                    <div class="col-sm-10 col-sm-offset-2 ">
+                                        <div class="notice" v-if="( config_now.black_white_list._editing != undefined )" >
+                                            Now is editing rule <span class="editing_rule_name">{{config_now.black_white_list._editing}}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="col-sm-2 control-label">开启</label>
+                                    <div class="col-sm-10">
+                                        <div class="config_form_line">
+                                            <input type="checkbox" name="enable" v-model="editor.black_white_list.enable">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="col-sm-2 control-label">Ip</label>
+                                    <div class="col-sm-10">
+                                        <input class="form-control" name="ip" type="text" v-mode="editor.black_white_list.ip">
+                                    </div>
+                                </div>
+<!--                                <div class="form-group">-->
+<!--                                    <label class="col-sm-2 control-label">model</label>-->
+<!--                                    <div class="col-sm-10">-->
+<!--                                        <select class="form-control" name="model" v-model="editor.black_white_list.model">-->
+<!--                                            <option value="black">黑名单</option>-->
+<!--                                            <option value="white">白名单</option>-->
+<!--                                        </select>-->
+<!--                                    </div>-->
+<!--                                </div>-->
+                                <div class="form-group">
+                                    <label class="col-sm-2 control-label">匹配规则</label>
+                                    <div class="col-sm-10">
+                                        <select class="form-control" name="matcher" v-model="editor.black_white_list.matcher">
+                                            <template v-for="(matcher_name, matcher_conditions) in config_now.matcher | orderBy '$key'">
+                                                <option value="{{matcher_name}}">{{matcher_name}}</option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="col-sm-2 control-label">执行动作</label>
+                                    <div class="col-sm-10">
+                                        <select class="form-control" name="action" v-model="editor.black_white_list.action">
+                                            <option value="accept">accept</option>
+                                            <option value="block">block</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group" v-show="editor.black_white_list.action=='block'">
+                                    <label class="col-sm-2 control-label">返回HTTP状态码</label>
+                                    <div class="col-sm-10">
+                                        <select class="form-control" name="code" v-model="editor.black_white_list.code">
+                                            <option value="200">200</option>
+                                            <option value="400">400</option>
+                                            <option value="401">401</option>
+                                            <option value="402">402</option>
+                                            <option value="403" selected>403</option>
+                                            <option value="404">404</option>
+                                            <option value="405">405</option>
+                                            <option value="406">406</option>
+                                            <option value="408">408</option>
+                                            <option value="409">409</option>
+                                            <option value="410">410</option>
+                                            <option value="426">426</option>
+                                            <option value="429">429</option>
+                                            <option value="444">444</option>
+                                            <option value="451">451</option>
+                                            <option value="500">500</option>
+                                            <option value="501">501</option>
+                                            <option value="502">502</option>
+                                            <option value="503">503</option>
+                                            <option value="504">504</option>
+                                            <option value="505">505</option>
+                                            <option value="507">507</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group" v-show="editor.black_white_list.action=='block'">
+                                    <label class="col-sm-2 control-label">自定义响应内容</label>
+                                    <div class="col-sm-10">
+                                        <div class="config_form_line">
+                                            <input type="checkbox" name="custom_response" v-model="editor.black_white_list.custom_response">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group" v-show="(editor.black_white_list.action=='block' && editor.black_white_list.custom_response==true )">
+                                    <label class="col-sm-2 control-label">响应内容</label>
+                                    <div class="col-sm-10">
+                                        <select class="form-control" name="response" v-model="editor.black_white_list.response">
+                                            <template v-for="(response_name, response_value) in config_now.response | orderBy '$key'">
+                                                <option value="{{response_name}}">{{response_name}}</option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <div class="col-sm-offset-2 col-sm-10">
+                                        <template v-if="(config_now.black_white_list._editing != undefined )">
+                                            <button type="submit" class="btn btn-default" >保存</button>
+                                            <button type="button" class="btn btn-default" onclick="config.config_edit_cacel('black_white_list','config_black_write_list_form')">
+                                                取消
+                                            </button>
+                                        </template>
+                                        <template v-else>
+                                            <button type="submit" class="btn btn-default" >添加</button>
+                                        </template>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
                         <div class="config_container" id="config_backend_proxy_pass">
                             <div class="config_title">
                                 反向代理
@@ -1816,13 +2016,20 @@
                                 </div>
                             </div>
                             
+<!--                            <div class="vn-config-box row">-->
+<!--                                <div class="col-sm-2 vn-config-label">访问本页IP限制</div>-->
+<!--                                <div class="col-sm-10">-->
+<!--                                    <input class="form-control vn-config-input" type="text" v-model="config_now.dashboard_host" placeholder="If not empty, dashboard can only be accessed through the designated host" vn_data_verify="verify.host_or_empty()" onchange="vnform.verify_input_with_notice(this)">-->
+<!--                                </div>-->
+<!--                            </div>-->
+
                             <div class="vn-config-box row">
-                                <div class="col-sm-2 vn-config-label">访问本页IP限制</div>
+                                <div class="col-sm-2 vn-config-label">登陆IP限制</div>
                                 <div class="col-sm-10">
-                                    <input class="form-control vn-config-input" type="text" v-model="config_now.dashboard_host" placeholder="If not empty, dashboard can only be accessed through the designated host" vn_data_verify="verify.host_or_empty()" onchange="vnform.verify_input_with_notice(this)">
+                                    <input class="form-control vn-config-input" type="text" v-model="config_now.login_ip" placeholder="限制登陆控制台的Ip" vn_data_verify="verify.host_or_empty()" onchange="vnform.verify_input_with_notice(this)">
                                 </div>
                             </div>
-                            
+
                             <div class="vn-config-box row">
                                 <div class="col-sm-2 vn-config-label">本页Cookie前缀设置</div>
                                 <div class="col-sm-10">

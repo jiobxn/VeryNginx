@@ -1,5 +1,6 @@
 local summary = require "summary"
 local filter = require "filter"
+local black_white_list = require "black_white_list"
 local browser_verify = require "browser_verify"
 local frequency_limit = require "frequency_limit"
 local router = require "router"
@@ -13,6 +14,7 @@ end
 summary.pre_run_matcher()
 
 filter.filter()
+black_white_list.filter()
 browser_verify.filter()
 frequency_limit.filter()
 router.filter()
