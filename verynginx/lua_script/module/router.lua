@@ -81,7 +81,7 @@ function _M.filter()
 
     local ip = _M.checkIp()
     local verifyed = false
-    if login_ip ~= '' and login_ip~=nil then
+    if login_ip ~= '' and login_ip ~= nil then
         for i, item in pairs(_M.split(login_ip, ",")) do
             if item == ip then
                 verifyed = true
@@ -181,6 +181,10 @@ _M.route_table = {
     { ['method'] = "POST", ['auth'] = true, ["path"] = "/status/clear", ['handle'] = summary.clear },
     { ['method'] = "GET", ['auth'] = true, ["path"] = "/config", ['handle'] = VeryNginxConfig.report },
     { ['method'] = "POST", ['auth'] = true, ["path"] = "/config", ['handle'] = VeryNginxConfig.set },
+    { ['method'] = "POST", ['auth'] = true, ["path"] = "/blackwhite/dump", ['handle'] = VeryNginxConfig.dump },
+    { ['method'] = "POST", ['auth'] = true, ["path"] = "/blackwhite/list", ['handle'] = VeryNginxConfig.report_blackwhites },
+    { ['method'] = "POST", ['auth'] = true, ["path"] = "/blackwhite/delete", ['handle'] = VeryNginxConfig.delete_blackwhites },
+    { ['method'] = "POST", ['auth'] = true, ["path"] = "/blackwhite", ['handle'] = VeryNginxConfig.setBlackWhite },
     { ['method'] = "GET", ['auth'] = true, ["path"] = "/loadconfig", ['handle'] = VeryNginxConfig.load_from_file },
 }
 

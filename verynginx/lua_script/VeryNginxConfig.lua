@@ -121,6 +121,8 @@ _M.configs["filter_rule"] = {
 }
 
 _M.configs["black_white_list_enable"] = true
+_M.configs["black_white_list_change"] = false
+
 _M.configs["black_white_list"] = {
     { ["matcher"] = 'all_request', ["action"] = "accept", ["ip"] = "127.0.0.1", ["model"] = "white" }
 }
@@ -301,6 +303,30 @@ function _M.load_from_file()
             ngx.log(ngx.STDERR, "Config.json Version:")
             ngx.log(ngx.STDERR, tmp["config_version"])
         else
+            local blackwhites = {}
+            file = io.open(_M.home_path() .. "/configs/black.json", "r")
+            if file ~= nil then
+                data = file:read("*all");
+                file:close();
+                --                ngx.log(ngx.STDERR, "========================2222====" .. data .. "====================")
+
+                for i, v in ipairs(dkjson.decode(data)) do
+                    table.insert(blackwhites, v)
+                end
+            end
+
+            file = io.open(_M.home_path() .. "/configs/white.json", "r")
+            if file ~= nil then
+                data = file:read("*all");
+                file:close();
+                --                ngx.log(ngx.STDERR, "========================44444====" .. data .. "====================")
+                for i, v in ipairs(dkjson.decode(data)) do
+                    table.insert(blackwhites, v)
+                end
+            end
+
+            tmp["black_white_list"] = blackwhites
+            tmp["black_white_list_change"] = false
             _M["configs"] = tmp
         end
 
@@ -311,14 +337,196 @@ function _M.load_from_file()
     end
 end
 
+function _M.clone(object)
+    local lookup_table = {}
+    local function copyObj(object)
+        if type(object) ~= "table" then
+            return object
+        elseif lookup_table[object] then
+            return lookup_table[object]
+        end
+
+        local new_table = {}
+        lookup_table[object] = new_table
+        for key, value in pairs(object) do
+            new_table[copyObj(key)] = copyObj(value)
+        end
+        return setmetatable(new_table, getmetatable(object))
+    end
+
+    return copyObj(object)
+end
+
 --return a json contain current config items
 function _M.report()
     _M.set_config_metadata(_M["configs"])
-    return dkjson.encode(_M["configs"])
+    local cloneConfigs = _M.clone(_M["configs"])
+    cloneConfigs.black_white_list = {};
+    return dkjson.encode(cloneConfigs)
+end
+
+function _M.report_blackwhites()
+
+    ngx.req.read_body()
+    args, err = ngx.req.get_post_args()
+    local search = args["search"]
+
+
+
+    args, err = ngx.req.get_uri_args()
+    local pageindex = tonumber(args["pageIndex"])
+    local pagesize = tonumber(args["pageSize"])
+
+    local tmplist = {}
+    if search ~= nil then
+        _M.set_config_metadata(_M["configs"])
+        local searchlist = {}
+        for i, v in ipairs(_M["configs"].black_white_list) do
+            if nil ~= string.find(v.ip, search) then
+                table.insert(searchlist, v)
+            end
+        end
+
+        for i, v in ipairs(searchlist) do
+            if i > (pageindex - 1) * pagesize and i <= pageindex * pagesize then
+                table.insert(tmplist, v)
+            end
+        end
+
+        return dkjson.encode({
+            ["black_whites"] = tmplist,
+            ["currentPage"] = pageindex,
+            ["totalPages"] = math.ceil(#searchlist / pagesize)
+        })
+    else
+        _M.set_config_metadata(_M["configs"])
+        for i, v in ipairs(_M["configs"].black_white_list) do
+            if i > (pageindex - 1) * pagesize and i <= pageindex * pagesize then
+                table.insert(tmplist, v)
+            end
+        end
+
+        return dkjson.encode({
+            ["black_whites"] = tmplist,
+            ["currentPage"] = pageindex,
+            ["totalPages"] = math.ceil(#_M["configs"].black_white_list / pagesize)
+        })
+    end
+end
+
+function _M.delete_blackwhites()
+
+    ngx.req.read_body()
+    args, err = ngx.req.get_post_args()
+    local id = args["id"]
+
+    args, err = ngx.req.get_uri_args()
+    local pageindex = tonumber(args["pageIndex"])
+    local pagesize = tonumber(args["pageSize"])
+
+
+    _M.set_config_metadata(_M["configs"])
+
+    for i, v in ipairs(_M["configs"].black_white_list) do
+        if v.id == id then
+            table.remove(_M["configs"].black_white_list, i)
+        end
+    end
+    local tmplist = {}
+    for i, v in ipairs(_M["configs"].black_white_list) do
+        if i > (pageindex - 1) * pagesize and i <= pageindex * pagesize then
+            table.insert(tmplist, v)
+        end
+    end
+    _M.configs["black_white_list_change"] = true
+    return dkjson.encode({
+        ["black_whites"] = tmplist,
+        ["currentPage"] = pageindex,
+        ["totalPages"] = math.ceil(#_M["configs"].black_white_list / pagesize)
+    })
+end
+
+function guid()
+    local seed = { 'e', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' }
+    local tb = {}
+    for i = 1, 32 do
+        table.insert(tb, seed[math.random(1, 16)])
+    end
+    local sid = table.concat(tb)
+    return string.format('%s-%s-%s-%s-%s',
+        string.sub(sid, 1, 8),
+        string.sub(sid, 9, 12),
+        string.sub(sid, 13, 16),
+        string.sub(sid, 17, 20),
+        string.sub(sid, 21, 32))
 end
 
 function _M.verify()
     return true
+end
+
+-- 保存黑白名单
+function _M.setBlackWhite()
+    local ret = false
+    local err = nil
+    local args = nil
+    local dump_ret = nil
+
+    ngx.req.read_body()
+    args, err = ngx.req.get_post_args()
+    if not args then
+        ngx.say("failed to get post args: ", err)
+        return
+    end
+
+    local new_config_json_escaped_base64 = args['config']
+    local new_config_json_escaped = ngx.decode_base64(new_config_json_escaped_base64)
+    --ngx.log(ngx.STDERR,new_config_json_escaped)
+
+    local new_config_json = ngx.unescape_uri(new_config_json_escaped)
+    --ngx.log(ngx.STDERR,new_config_json)
+
+    local new_config = json.decode(new_config_json)
+    -- set black white list empty
+
+    if new_config.id ~= nil and new_config.id ~= '' then
+        for i, v in ipairs(_M["configs"].black_white_list) do
+            if v.id == new_config.id then
+                _M["configs"].black_white_list[i] = new_config
+            end
+        end
+    else
+        new_config.id = guid()
+        table.insert(_M.configs["black_white_list"], new_config)
+    end
+
+    _M.configs["black_white_list_change"] = true
+    return json.encode({ ["ret"] = "success", ["err"] = err })
+end
+
+
+function _M.dump()
+    local ret = false
+    local err = nil
+
+    local blacks = {}
+    local whites = {};
+    for i, v in ipairs(_M.configs["black_white_list"]) do
+        if v.action == 'accept' then
+            table.insert(whites, v)
+        else
+            table.insert(blacks, v)
+        end
+    end
+
+    ret, err = _M.dump_to_file(blacks, "/configs/black.json", true, "w")
+    ret, err = _M.dump_to_file(whites, "/configs/white.json", true, "w")
+
+    if ret == true then
+        return json.encode({ ["ret"] = "success", ["err"] = err })
+    else
+        return json.encode({ ["ret"] = "failed", ["err"] = err })
+    end
 end
 
 function _M.set()
@@ -342,12 +550,27 @@ function _M.set()
     --ngx.log(ngx.STDERR,new_config_json)
 
     local new_config = json.decode(new_config_json)
+    -- set black white list empty
+
+    --    new_config.black_white_list = {}
 
     if _M.configs['readonly'] == true then
         ret = false
         err = "all configs was set to readonly"
     elseif _M.verify(new_config) == true then
-        ret, err = _M.dump_to_file(new_config)
+        ret, err = _M.dump_to_file(new_config, "/configs/config.json", true, "w")
+        local blacks = {}
+        local whites = {};
+        for i, v in ipairs(_M.configs["black_white_list"]) do
+            if v.action == 'accept' then
+                table.insert(whites, v)
+            else
+                table.insert(blacks, v)
+            end
+        end
+
+        ret, err = _M.dump_to_file(blacks, "/configs/black.json", true, "w")
+        ret, err = _M.dump_to_file(whites, "/configs/white.json", true, "w")
     end
 
     if ret == true then
@@ -383,17 +606,20 @@ function _M.set_config_metadata(config_table)
     --set table meta_data end
 end
 
-function _M.dump_to_file(config_table)
+function _M.dump_to_file(config_table, path, setmetadata, mode)
 
-    _M.set_config_metadata(config_table)
+    if setmetadata then
+        _M.set_config_metadata(config_table)
+    end
 
-    local config_data = dkjson.encode(config_table, { indent = true }) --must use dkjson at here because it can handle the metadata
-    local config_dump_path = _M.home_path() .. "/configs/config.json"
+
+    local config_data = dkjson.encode(config_table, { indent = setmetadata }) --must use dkjson at here because it can handle the metadata
+    local config_dump_path = _M.home_path() .. path
 
     --ngx.log(ngx.STDERR,config_dump_path)
-    local file, err = io.open(config_dump_path, "w")
+    local file, err = io.open(config_dump_path, mode)
     if file ~= nil then
-        file:write(config_data)
+        file:write(config_data .. '\r\n')
         file:close()
         --update config hash in shared dict
         ngx.shared.status:set('vn_config_hash', ngx.md5(config_data))
