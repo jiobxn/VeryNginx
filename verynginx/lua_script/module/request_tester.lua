@@ -103,6 +103,7 @@ function _M.test_uri( condition )
     return _M.test_var( condition['operator'], condition['value'], uri )
 end
 
+--    Get the real IP of the client
 function _M.checkIp()
     --    ngx.log(ngx.STDERR, ngx.var.remote_addr)
     --    ngx.log(ngx.STDERR, ngx.var.x_real_ip)
