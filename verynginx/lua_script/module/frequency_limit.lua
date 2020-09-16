@@ -5,6 +5,7 @@
 -- @Disc    : request frequency limit
 local logger = require( "logger" )
 local log = logger:new('info', '/usr/local/openresty/nginx/logs/frequency.log' )
+local util = require "util"
 
 local _M = {}
 
@@ -29,13 +30,13 @@ function _M.filter()
         local enable = rule['enable']
         local matcher = matcher_list[ rule['matcher'] ] 
         if enable == true and request_tester.test( matcher ) == true then
-            local remote_addr = ngx.var.remote_addr
+            local remote_addr = util.checkIp()
 			if remote_addr == nil then
 				remote_addr = "-"
 			end
             local key = i 
             if util.existed( rule['separate'], 'ip' ) then
-                key = key..'-'.. ngx.var.remote_addr
+                key = key..'-'.. util.checkIp()
             end
 
             if util.existed( rule['separate'], 'uri' ) then
