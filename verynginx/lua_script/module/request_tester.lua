@@ -103,8 +103,37 @@ function _M.test_uri( condition )
     return _M.test_var( condition['operator'], condition['value'], uri )
 end
 
+function _M.checkIp()
+    --    ngx.log(ngx.STDERR, ngx.var.remote_addr)
+    --    ngx.log(ngx.STDERR, ngx.var.x_real_ip)
+    --    ngx.log(ngx.STDERR, ngx.var.x_forwarded_for)
+    --
+    local headers = ngx.req.get_headers()
+    --    local ip = headers["X-REAL-IP"] or headers["X_FORWARDED_FOR"] or ngx.var.remote_addr
+    --    ngx.log(ngx.STDERR, "============================" .. ip .. "====================")
+
+    local clientIP = headers["x-forwarded-for"]
+    if clientIP == nil or string.len(clientIP) == 0 or clientIP == "unknown" then
+        clientIP = headers["Proxy-Client-IP"]
+    end
+    if clientIP == nil or string.len(clientIP) == 0 or clientIP == "unknown" then
+        clientIP = headers["WL-Proxy-Client-IP"]
+    end
+    if clientIP == nil or string.len(clientIP) == 0 or clientIP == "unknown" then
+        clientIP = ngx.var.remote_addr
+    end
+    -- 对于通过多个代理的情况，第一个IP为客户端真实IP,多个IP按照','分割
+    if clientIP ~= nil and string.len(clientIP) > 15 then
+        local pos = string.find(clientIP, ",", 1)
+        clientIP = string.sub(clientIP, 1, pos - 1)
+    end
+
+--    ngx.log(ngx.STDERR, "============================" .. clientIP .. "====================")
+    return clientIP
+end
+
 function _M.test_ip( condition )
-    local remote_addr = ngx.var.remote_addr
+    local remote_addr = _M.checkIp()
     return _M.test_var( condition['operator'], condition['value'], remote_addr )
 end
 
